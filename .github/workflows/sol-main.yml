@@ -1,0 +1,44 @@
+name: Staging deployment
+
+on:
+  push:
+    tags:
+    - stage-*
+
+jobs: 
+  build:
+   
+    runs-on: ubuntu-latest
+   
+    steps:
+      - name: Checkout files    
+        uses: actions/checkout@v2
+
+      - name: Build and push Docker images
+        run: docker build -t $(echo $soldex-dev)/$(echo $ubuntu-latest):$(echo $GITHUB_SHA | head -c7) 
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_PASSWORD }}
+          repository: mvkaran/openmct
+          tag_with_ref: true
+          tag_with_sha: true
+        
+  deploy:
+    needs: build
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout files    
+        uses: actions/checkout@v2
+        
+      - name: Get tag name
+        uses: olegtarasov/get-tag@v2
+        
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+         token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+       
+      - name: Push image to DigitalOcean Container Registry
+        run: docker push $(echo $soldex-dev)/$(echo $ubuntu-latest):$(echo $GITHUB_SHA | head -c7)
